@@ -323,7 +323,10 @@ var Webcam = {
 				}
 				else {
 				  	// using URL.createObjectURL() as fallback for old browsers
-				  	video.src = window.URL.createObjectURL(stream);
+				  	//video.src = window.URL.createObjectURL(stream);
+					//Fixed camera issue in latest browser versions
+					 video.srcObject = stream;
+                			 video.play();
 				}
 			})
 			.catch( function(err) {
