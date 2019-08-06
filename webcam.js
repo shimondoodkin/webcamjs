@@ -1123,6 +1123,11 @@ var Webcam = {
 
 			case 'error':
 				// Flash error
+				if(msg=="Access to camera denied")
+				{
+					this.configure();
+					break;
+				}
 				this.dispatch('error', new FlashError(msg));
 				break;
 
