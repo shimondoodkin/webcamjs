@@ -80,13 +80,17 @@ var Webcam = {
 		// Setup getUserMedia, with polyfill for older browsers
 		// Adapted from: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
 		this.mediaDevices = (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ?
-			navigator.mediaDevices : ((navigator.mozGetUserMedia || navigator.webkitGetUserMedia) ? {
+			navigator.mediaDevices
+			: 
+			((navigator.mozGetUserMedia || navigator.webkitGetUserMedia|| navigator.msGetUserMedia) ? 
+			{
 				getUserMedia: function(c) {
-					return new Promise(function(y, n) {
+					return new Promise(function(y, n) {                 //Promise is not supported in Opera Mobile 11.5, Opera Mini all, IE Mobile 10, IE 9, Blackberry Browser 7
 						(navigator.mozGetUserMedia ||
-						navigator.webkitGetUserMedia).call(navigator, c, y, n);
+						 navigator.webkitGetUserMedia ||
+						 navigator.msGetUserMedia).call(navigator, c, y, n);
 					});
-				}
+			}
 		} : null);
 
 		window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
@@ -510,7 +514,7 @@ var Webcam = {
 				}
 			});
 		}
-		else if (this.iOS) {
+		else if (this.iOS) { // get picture using select file form field
 			// prepare HTML elements
 			var div = document.createElement('div');
 			div.id = this.container.id+'-ios_div';
@@ -544,7 +548,10 @@ var Webcam = {
 			// add input listener to load the selected image
 			input.addEventListener('change', function(event) {
 				if (event.target.files.length > 0 && event.target.files[0].type.indexOf('image/') == 0) {
-					var objURL = URL.createObjectURL(event.target.files[0]);
+					if(!URL && webkitURL) URL = webkitURL;
+					if(!URL.createObjectURL && webkitURL.createObjectURL) URL.createObjectURL = webkitURL.createObjectURL;
+					
+					var objURL = URL.createObjectURL(event.target.files[0]);   //URL.createObjectURL() is not supported in IE 9, not a problem it is iOS only
 
 					// load image with auto scale and crop
 					var image = new Image();
@@ -568,7 +575,7 @@ var Webcam = {
 					}, false);
 
 					// read EXIF data
-					var fileReader = new FileReader();
+					var fileReader = new FileReader();                                    //FileReader is not supported in IE 9
 					fileReader.addEventListener('load', function(e) {
 						var orientation = self.exifOrientation(e.target.result);
 						if (orientation > 1) {
@@ -1152,7 +1159,7 @@ var Webcam = {
 		// from: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Base64_encoding_and_decoding
 		var sB64Enc = sBase64.replace(/[^A-Za-z0-9\+\/]/g, ""), nInLen = sB64Enc.length,
 			nOutLen = nBlocksSize ? Math.ceil((nInLen * 3 + 1 >> 2) / nBlocksSize) * nBlocksSize : nInLen * 3 + 1 >> 2,
-			taBytes = new Uint8Array(nOutLen);
+			taBytes = new Uint8Array(nOutLen);                                                                               //Uint8Array is not supported in Opera Mobile 11.5, IE Mobile 10, IE 9, Blackberry Browser 7
 
 		for (var nMod3, nMod4, nUint24 = 0, nOutIdx = 0, nInIdx = 0; nInIdx < nInLen; nInIdx++) {
 			nMod4 = nInIdx & 3;
@@ -1203,10 +1210,10 @@ var Webcam = {
 		};
 
 		// create a blob and decode our base64 to binary
-		var blob = new Blob( [ this.base64DecToArr(raw_image_data) ], {type: 'image/'+image_fmt} );
+		var blob = new Blob( [ this.base64DecToArr(raw_image_data) ], {type: 'image/'+image_fmt} ); //   Blob is not supported in IE 9 ,  in base64DecToArr Uint8Array is not supported in Opera Mobile 11.5, IE Mobile 10, IE 9, Blackberry Browser 7
 
 		// stuff into a form, so servers can easily receive it as a standard file upload
-		var form = new FormData();
+		var form = new FormData();                                                                  //    FormData is not supported in IE 9 // better use jquery 
 		form.append( form_elem_name, blob, form_elem_name+"."+image_fmt.replace(/e/, '') );
 
 		// send data to server
