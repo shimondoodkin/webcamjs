@@ -105,6 +105,179 @@ var Webcam = {
 		}
 	},
 
+
+	enumerateDevices: function (callback) { // static function
+		
+		var enumerateDevices;
+
+		if(navigator.enumerateDevices)
+		{
+			enumerateDevices=function(){return navigator.enumerateDevices.call(navigator,arguments)};
+		}
+		else if(navigator.mozEnumerateDevices)
+		{
+			enumerateDevices=function(){return navigator.mozEnumerateDevices.call(navigator,arguments)};
+		}
+		else if(navigator.webkitEnumerateDevices)
+		{
+			enumerateDevices=function(){return navigator.webkitEnumerateDevices.call(navigator,arguments)};
+		}
+		else if(navigator.msEnumerateDevices)
+		{
+			enumerateDevices=function(){return navigator.msEnumerateDevices.call(navigator,arguments)};
+		}
+		else if ( navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) { //check Firefox <=38
+			enumerateDevices = function(callback) {
+				var enumerateDevicesPromise = navigator.mediaDevices.enumerateDevices();
+				if (enumerateDevicesPromise && enumerateDevicesPromise.then)
+				{
+					enumerateDevicesPromise.then(callback).catch(function() { callback([]); });
+				} else {
+					callback([]);
+				}
+			};
+		}	
+		else if ( window.MediaStreamTrack && window.MediaStreamTrack.getSources) {
+			enumerateDevices = function(){return window.MediaStreamTrack.getSources.call(window.MediaStreamTrack,arguments)};
+		}
+		
+	
+		
+		 
+		var videoInputDevices = [];
+		var audioInputDevices = [];
+		var audioOutputDevices = [];
+		var hasWebcam = false;
+		var hasMicrophone = false;
+		var hasSpeakers = false;
+		var isWebsiteHasWebcamPermissions = false;
+		var isWebsiteHasMicrophonePermissions = false;
+		
+		if (!enumerateDevices) {
+			if (callback) {
+				
+				Webcam.videoInputDevices=videoInputDevices;
+				Webcam.audioInputDevices=audioInputDevices;
+				Webcam.audioOutputDevices=audioOutputDevices;
+				Webcam.hasWebcam=hasWebcam;
+				Webcam.hasMicrophone=hasMicrophone;
+				Webcam.hasSpeakers=hasSpeakers;
+				Webcam.isWebsiteHasWebcamPermissions=isWebsiteHasWebcamPermissions;
+				Webcam.isWebsiteHasMicrophonePermissions=isWebsiteHasMicrophonePermissions;
+				
+				callback(videoInputDevices,audioInputDevices,audioOutputDevices,hasWebcam,isWebsiteHasWebcamPermissions,isWebsiteHasMicrophonePermissions);
+			}
+			return;
+		}
+		// to prevent duplication
+		var alreadyUsedDevices = {};
+
+		enumerateDevices(function(devices) {
+            devices.forEach(function(_device) {
+                var device = {}; // copy primitive properties only from _device to device
+                for (var d in _device) {
+                    try {
+                        if (typeof _device[d] !== 'function') {
+                            device[d] = _device[d];
+                        }
+                    } catch (e) {}
+                }
+
+                if (alreadyUsedDevices[device.deviceId + device.label + device.kind]) {
+                    return;
+                }
+
+                // if it is MediaStreamTrack.getSources
+                if (device.kind === 'audio') {
+                    device.kind = 'audioinput';
+                }
+
+                if (device.kind === 'video') {
+                    device.kind = 'videoinput';
+                }
+
+                if (!device.deviceId) {
+                    device.deviceId = device.id;
+                }
+
+                if (!device.id) {
+                    device.id = device.deviceId;
+                }
+
+                if (!device.label) {
+                    device.isCustomLabel = true;
+
+                    if (device.kind === 'videoinput') {
+                        device.label = 'Camera ' + (videoInputDevices.length + 1);
+                    } else if (device.kind === 'audioinput') {
+                        device.label = 'Microphone ' + (audioInputDevices.length + 1);
+                    } else if (device.kind === 'audiooutput') {
+                        device.label = 'Speaker ' + (audioOutputDevices.length + 1);
+                    } else {
+                        device.label = 'Please invoke getUserMedia once.';
+                    }
+
+                    //if (typeof DetectRTC !== 'undefined' && DetectRTC.browser.isChrome && DetectRTC.browser.version >= 46 && !/^(https:|chrome-extension:)$/g.test(location.protocol || '')) {
+                    //    if (typeof document !== 'undefined' && typeof document.domain === 'string' && document.domain.search && document.domain.search(/localhost|127.0./g) === -1) {
+                    //        device.label = 'HTTPs is required to get label of this ' + device.kind + ' device.';
+                    //    }
+                    //}
+                } else {
+                    // Firefox on Android still returns empty label
+                    if (device.kind === 'videoinput' && !isWebsiteHasWebcamPermissions) {
+                        isWebsiteHasWebcamPermissions = true;
+                    }
+
+                    if (device.kind === 'audioinput' && !isWebsiteHasMicrophonePermissions) {
+                        isWebsiteHasMicrophonePermissions = true;
+                    }
+                }
+
+                if (device.kind === 'audioinput') {
+                    hasMicrophone = true;
+
+                    if (audioInputDevices.indexOf(device) === -1) {
+                        audioInputDevices.push(device);
+                    }
+                }
+
+                if (device.kind === 'audiooutput') {
+                    hasSpeakers = true;
+
+                    if (audioOutputDevices.indexOf(device) === -1) {
+                        audioOutputDevices.push(device);
+                    }
+                }
+
+                if (device.kind === 'videoinput') {
+                    hasWebcam = true;
+
+                    if (videoInputDevices.indexOf(device) === -1) {
+                        videoInputDevices.push(device);
+                    }
+                }
+
+                // there is no 'videoouput' in the spec.
+                //MediaDevices.push(device);
+
+                alreadyUsedDevices[device.deviceId + device.label + device.kind] = device;
+            });
+
+			
+			if (callback) {
+				Webcam.videoInputDevices=videoInputDevices;
+				Webcam.audioInputDevices=audioInputDevices;
+				Webcam.audioOutputDevices=audioOutputDevices;
+				Webcam.hasWebcam=hasWebcam;
+				Webcam.hasMicrophone=hasMicrophone;
+				Webcam.hasSpeakers=hasSpeakers;
+				Webcam.isWebsiteHasWebcamPermissions=isWebsiteHasWebcamPermissions;
+				Webcam.isWebsiteHasMicrophonePermissions=isWebsiteHasMicrophonePermissions;
+				callback(videoInputDevices,audioInputDevices,audioOutputDevices,hasWebcam,isWebsiteHasWebcamPermissions,isWebsiteHasMicrophonePermissions);
+			}
+		});
+	},
+	
 	exifOrientation: function(binFile) {
 		// extract orientation information from the image provided by iOS
 		// algorithm based on exif-js
