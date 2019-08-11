@@ -501,8 +501,9 @@ var Webcam = {
 				  	//video.src = window.URL.createObjectURL(stream);
 					//Fixed camera issue in latest browser versions
 					 video.srcObject = stream;
-                			 video.play();
 				}
+				if (video.paused)
+					return video.play()
 			})
 			.catch( function(err) {
 				// JH 2016-07-31 Instead of dispatching error, now falling back to Flash if userMedia fails (thx @john2014)
